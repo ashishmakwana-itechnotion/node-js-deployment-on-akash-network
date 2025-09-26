@@ -1,0 +1,71 @@
+---
+version: "2.0"
+services:
+  service-1:
+    image: ashishmakwanaitechnotion/hello-node:latest
+    expose:
+      - port: 3000
+        as: 3000
+        to:
+          - service: nginx
+  nginx:
+    image: ashishmakwanaitechnotion/custom-nginx:latest
+    expose:
+      - port: 80
+        as: 80
+        accept:
+          - test.evolvedhumancare.io
+        to:
+          - global: true
+    files:
+      - name: default.conf
+        content: |
+          server {
+              listen 80;
+              server_name test.evolvedhumancare.io;
+
+              location / {
+                  proxy_pass http://service-1:3000;
+                  proxy_http_version 1.1;
+                  proxy_set_header Upgrade $http_upgrade;
+                  proxy_set_header Connection 'upgrade';
+                  proxy_set_header Host $host;
+                  proxy_cache_bypass $http_upgrade;
+              }
+          }
+profiles:
+  compute:
+    service-1:
+      resources:
+        cpu:
+          units: 0.1
+        memory:
+          size: 512Mi
+        storage:
+          - size: 1Gi
+    nginx:
+      resources:
+        cpu:
+          units: 0.1
+        memory:
+          size: 512Mi
+        storage:
+          - size: 1Gi
+  placement:
+    dcloud:
+      pricing:
+        service-1:
+          denom: uakt
+          amount: 100000
+        nginx:
+          denom: uakt
+          amount: 100000
+deployment:
+  service-1:
+    dcloud:
+      profile: service-1
+      count: 1
+  nginx:
+    dcloud:
+      profile: nginx
+      count: 1
